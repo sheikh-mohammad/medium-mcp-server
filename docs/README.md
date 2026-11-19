@@ -8,6 +8,10 @@ Research and reference docs for building a Python [Model Context Protocol (MCP)]
 - [MCP, Python implementation, and client compatibility](./research-mcp-python-and-compatibility.md) — MCP primitives/lifecycle/transports, Python SDK/FastMCP implementation guidance, stdio vs Streamable HTTP compatibility across client types, deployment/auth/security, testing/debugging, and pitfalls.
 - [Existing servers/integrations and recommended architecture](./research-existing-servers-and-architecture.md) — survey of Medium-adjacent blogging/CMS MCP patterns, lessons learned, and a recommended capability-gated architecture/MVP plan for this project.
 
+## Reference material
+
+- [Connector-Native Apps: A Remote MCP Server Whose Customer Is an AI](./af-v1-chap.md) — external chapter/reference on connector-native MCP app design (one gateway, tools-only surface, verified identity, session gating, fail-closed behavior, and live connector patterns). Source: [Agent Factory](https://agentfactory1.panaversity.org/docs/connector-native-apps).
+
 ## Planned implementation guides
 
 - Installation and Medium token/setup configuration
