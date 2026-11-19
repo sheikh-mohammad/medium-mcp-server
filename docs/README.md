@@ -2,6 +2,10 @@
 
 Research and reference docs for building a Python [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for Medium, intended to be connectable to coding agents, terminal CLIs, desktop apps, and web-based AI clients (ChatGPT, Claude, Gemini, etc.).
 
+## Specification
+
+- [Medium MCP Server — Product & Technical Specification](./spec.md) — draft v0.1 spec synthesizing the research docs: goals/non-goals, capability modes, MCP tools/resources/prompts, auth/config, transports, architecture, safety model, testing, and phased implementation roadmap.
+
 ## Research docs
 
 - [Medium platform integration research (2026)](./research-medium-platform.md) — official Medium API status/capabilities/limitations, unofficial/community alternatives (feeds, libraries, automation), realistic feasibility, auth UX, and risks/ToS considerations.
