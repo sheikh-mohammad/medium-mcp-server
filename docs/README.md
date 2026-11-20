@@ -1,30 +1,29 @@
 # Documentation
 
-Research and reference docs for building a Python [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for Medium, intended to be connectable to coding agents, terminal CLIs, desktop apps, and web-based AI clients (ChatGPT, Claude, Gemini, etc.).
+Research, specification, planning, and compatibility docs for the Python [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) Medium server in this repository.
 
-## Specification
+For install, quickstart, configuration, and current tool/resource/prompt surface, see the [project README](../README.md).
 
-- [Medium MCP Server — Product & Technical Specification](./spec.md) — draft v0.1 spec synthesizing the research docs: goals/non-goals, capability modes, MCP tools/resources/prompts, auth/config, transports, architecture, safety model, testing, and phased implementation roadmap.
+## Specification & planning
+
+- [Medium MCP Server — Product & Technical Specification](./spec.md) — draft v0.1 source of truth for goals/non-goals, capability modes, MCP surface, safety model, transports, testing, and roadmap.
+- [MVP implementation plan (phases 0–4)](./medium-mcp-server-mvp-implementation-plan.md) — implementation-oriented plan, phase breakdown, and verification notes.
+
+## Compatibility & operations
+
+- [Compatibility matrix](./compatibility-matrix.md) — verified vs unverified host/client/transport status and guidance for recording manual verification evidence.
 
 ## Research docs
 
-- [Medium platform integration research (2026)](./research-medium-platform.md) — official Medium API status/capabilities/limitations, unofficial/community alternatives (feeds, libraries, automation), realistic feasibility, auth UX, and risks/ToS considerations.
-- [MCP, Python implementation, and client compatibility](./research-mcp-python-and-compatibility.md) — MCP primitives/lifecycle/transports, Python SDK/FastMCP implementation guidance, stdio vs Streamable HTTP compatibility across client types, deployment/auth/security, testing/debugging, and pitfalls.
-- [Existing servers/integrations and recommended architecture](./research-existing-servers-and-architecture.md) — survey of Medium-adjacent blogging/CMS MCP patterns, lessons learned, and a recommended capability-gated architecture/MVP plan for this project.
+- [Medium platform integration research (2026)](./research-medium-platform.md) — official Medium API status/capabilities/limitations, unofficial/community alternatives, feasibility, auth UX, and ToS/risk considerations.
+- [MCP, Python implementation, and client compatibility](./research-mcp-python-and-compatibility.md) — MCP primitives/lifecycle/transports, Python SDK implementation guidance, transport compatibility, deployment/auth/security, testing, and pitfalls.
+- [Existing servers/integrations and recommended architecture](./research-existing-servers-and-architecture.md) — adjacent blogging/CMS MCP patterns, lessons learned, and recommended capability-gated architecture.
 
 ## Reference material
 
-- [Connector-Native Apps: A Remote MCP Server Whose Customer Is an AI](./af-v1-chap.md) — external chapter/reference on connector-native MCP app design (one gateway, tools-only surface, verified identity, session gating, fail-closed behavior, and live connector patterns). Source: [Agent Factory](https://agentfactory1.panaversity.org/docs/connector-native-apps).
+- [Connector-Native Apps: A Remote MCP Server Whose Customer Is an AI](./af-v1-chap.md) — external reference on connector-native MCP design (gateway, verified identity, fail-closed behavior, session gating). Source: [Agent Factory](https://agentfactory1.panaversity.org/docs/connector-native-apps).
 
-## Planned implementation guides
+## Notes
 
-- Installation and Medium token/setup configuration
-- Claude Desktop and Claude Code
-- ChatGPT connectors and web-based AI client notes
-- Gemini and other MCP-capable clients
-- Cursor, VS Code, and other IDE-based agents
-- Terminal and custom MCP clients
-- Streamable HTTP and remote deployment
-- Tool/resource/prompt reference and examples
-
-Documentation is being expanded alongside implementation. For project overview and roadmap, see the [project README](../README.md).
+- Host/client MCP support (especially remote/web connectors) is evolving; treat unverified entries in the compatibility matrix as requiring validation for your target environment.
+- If implementation changes the MCP surface, safety model, or capability claims, update `docs/spec.md` accordingly.

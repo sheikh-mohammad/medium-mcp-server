@@ -187,27 +187,56 @@ def _doctor_output(settings: Settings, capability_manager: object) -> dict[str, 
         )
 
     if settings.medium_token_configured:
-        add(
-            "info",
-            "medium_token",
-            "MEDIUM_TOKEN is configured (redacted). Official API capability is opt-in "
-            "and will be verified on probe/use; availability may vary.",
-        )
+        auth = None
+        if isinstance(report, dict):
+            auth = (report.get("auth") or {}) if isinstance(report.get("auth"), dict) else None
+        auth_valid = auth.get("valid") if isinstance(auth, dict) else None
+        auth_detail = auth.get("detail") if isinstance(auth, dict) else None
+        if auth_valid is False:
+            add(
+                "warn",
+                "medium_token",
+                "MEDIUM_TOKEN is configured (redacted) but official API capability is not currently available. "
+                f"{auth_detail or 'Check token validity/availability; server will fail closed and suggest export/feed alternatives.'}",
+            )
+        elif auth_valid is True:
+            add(
+                "ok",
+                "medium_token",
+                "MEDIUM_TOKEN is configured (redacted) and official API capability is currently available.",
+            )
+        else:
+            add(
+                "info",
+                "medium_token",
+                "MEDIUM_TOKEN is configured (redacted). Official API capability is opt-in and will be "
+                "verified on probe/use; availability may vary by account/token.",
+            )
     else:
         add(
             "ok",
             "medium_token",
-            "No MEDIUM_TOKEN configured. Export/prepare and public feed_read modes "
-            "remain available.",
+            "No MEDIUM_TOKEN configured. Export/prepare and public feed_read modes remain available.",
         )
 
     if settings.medium_enable_unofficial:
         add(
             "warn",
             "unofficial_mode",
-            "MEDIUM_ENABLE_UNOFFICIAL is set, but unofficial automation is not "
-            "implemented in this MVP.",
+            "MEDIUM_ENABLE_UNOFFICIAL is set, but unofficial automation is not implemented in this MVP.",
         )
+
+    add(
+        "info",
+        "http_deployment",
+        "Streamable HTTP MVP posture is localhost + deployment hooks. For remote use, place behind TLS "
+        "and reverse-proxy auth/origin protections/rate limiting; no built-in multi-tenant auth.",
+    )
+    add(
+        "ok",
+        "secrets_redaction",
+        "Diagnostics and logs redact token/authorization/cookie/secret values by design.",
+    )
 
     return {
         "ok": True,

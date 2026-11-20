@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 from . import __version__
@@ -29,6 +30,9 @@ from .errors import (
     confirmation_required,
     unsupported_capability,
 )
+from .logging import audit_log, get_logger, hash_identifier, new_correlation_id
+
+_logger = get_logger(__name__)
 
 SERVER_INSTRUCTIONS = (
     "Medium MCP server. Capability-gated and draft-first. "
@@ -512,6 +516,18 @@ def _register_phase3_tools(
             return unavailable
         return _handle_official_result(capability_manager, client.list_publications())
 
+    def _audit_outcome(result: dict[str, Any]) -> str:
+        if result.get("ok") is True:
+            data = result.get("data") or {}
+            dedupe = data.get("dedupe") if isinstance(data, dict) else None
+            if isinstance(dedupe, dict) and dedupe.get("status") == "hit":
+                return "dedupe_hit"
+            return "ok"
+        err = result.get("error") or {}
+        if isinstance(err, dict) and err.get("code"):
+            return f"error:{err.get('code')}"
+        return "error"
+
     def create_draft(
         title: str | None = None,
         content: str | None = None,
@@ -525,10 +541,27 @@ def _register_phase3_tools(
         prepared_post: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Create a Medium draft (capability-gated, draft-first)."""
+        correlation_id = new_correlation_id()
+        started = time.monotonic()
+        idem_value = idempotency_key
+        if idem_value is None and isinstance(prepared_post, dict):
+            idem_value = prepared_post.get("idempotency_key")
+        target = "publication" if (publication_id or (isinstance(prepared_post, dict) and prepared_post.get("publication_id"))) else "user"
         unavailable = _can_use_official_api("create_draft")
         if unavailable:
+            audit_log(
+                _logger,
+                correlation_id=correlation_id,
+                tool="create_draft",
+                action="create_draft",
+                mode=OFFICIAL_MODE,
+                outcome=_audit_outcome(unavailable),
+                duration_ms=int((time.monotonic() - started) * 1000),
+                target=target,
+                idempotency_key_hash=hash_identifier(str(idem_value) if idem_value is not None else None),
+            )
             return unavailable
-        return _handle_official_result(
+        result = _handle_official_result(
             capability_manager,
             client.create_post(
                 action="create_draft",
@@ -545,6 +578,18 @@ def _register_phase3_tools(
                 idempotency_key=idempotency_key,
             ),
         )
+        audit_log(
+            _logger,
+            correlation_id=correlation_id,
+            tool="create_draft",
+            action="create_draft",
+            mode=OFFICIAL_MODE,
+            outcome=_audit_outcome(result),
+            duration_ms=int((time.monotonic() - started) * 1000),
+            target=target,
+            idempotency_key_hash=hash_identifier(str(idem_value) if idem_value is not None else None),
+        )
+        return result
 
     def upload_image(
         image_path: str | None = None,
@@ -553,10 +598,23 @@ def _register_phase3_tools(
         filename: str | None = None,
     ) -> dict[str, Any]:
         """Upload an image via official Medium API when supported (capability-gated)."""
+        correlation_id = new_correlation_id()
+        started = time.monotonic()
+        source = "bytes" if image_bytes_base64 else ("path" if image_path else "unknown")
         unavailable = _can_use_official_api("upload_image")
         if unavailable:
+            audit_log(
+                _logger,
+                correlation_id=correlation_id,
+                tool="upload_image",
+                action="upload_image",
+                mode=OFFICIAL_MODE,
+                outcome=_audit_outcome(unavailable),
+                duration_ms=int((time.monotonic() - started) * 1000),
+                target=source,
+            )
             return unavailable
-        return _handle_official_result(
+        result = _handle_official_result(
             capability_manager,
             client.upload_image(
                 image_path=image_path,
@@ -565,6 +623,17 @@ def _register_phase3_tools(
                 filename=filename,
             ),
         )
+        audit_log(
+            _logger,
+            correlation_id=correlation_id,
+            tool="upload_image",
+            action="upload_image",
+            mode=OFFICIAL_MODE,
+            outcome=_audit_outcome(result),
+            duration_ms=int((time.monotonic() - started) * 1000),
+            target=source,
+        )
+        return result
 
     def publish_post(
         confirm: bool = False,
@@ -581,15 +650,32 @@ def _register_phase3_tools(
         prepared_post: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Create/publish a post with explicit confirmation (capability-gated, high impact)."""
+        correlation_id = new_correlation_id()
+        started = time.monotonic()
+        idem_value = idempotency_key
+        if idem_value is None and isinstance(prepared_post, dict):
+            idem_value = prepared_post.get("idempotency_key")
+        target = f"{publish_status}:{'publication' if (publication_id or (isinstance(prepared_post, dict) and prepared_post.get('publication_id'))) else 'user'}"
         unavailable = _can_use_official_api("publish_post")
         if unavailable:
+            audit_log(
+                _logger,
+                correlation_id=correlation_id,
+                tool="publish_post",
+                action="publish_post",
+                mode=OFFICIAL_MODE,
+                outcome=_audit_outcome(unavailable),
+                duration_ms=int((time.monotonic() - started) * 1000),
+                target=target,
+                idempotency_key_hash=hash_identifier(str(idem_value) if idem_value is not None else None),
+            )
             return unavailable
         if confirm is not True:
             err = confirmation_required(
                 "publish_post requires explicit confirmation (confirm=true) before taking effect.",
                 publish_status=publish_status,
             )
-            return {
+            result = {
                 "ok": False,
                 "mode": OFFICIAL_MODE,
                 "data": None,
@@ -597,7 +683,19 @@ def _register_phase3_tools(
                 "next_actions": err.next_actions,
                 "error": err.to_dict(),
             }
-        return _handle_official_result(
+            audit_log(
+                _logger,
+                correlation_id=correlation_id,
+                tool="publish_post",
+                action="publish_post",
+                mode=OFFICIAL_MODE,
+                outcome="error:confirmation_required",
+                duration_ms=int((time.monotonic() - started) * 1000),
+                target=target,
+                idempotency_key_hash=hash_identifier(str(idem_value) if idem_value is not None else None),
+            )
+            return result
+        result = _handle_official_result(
             capability_manager,
             client.create_post(
                 action="publish_post",
@@ -614,6 +712,18 @@ def _register_phase3_tools(
                 idempotency_key=idempotency_key,
             ),
         )
+        audit_log(
+            _logger,
+            correlation_id=correlation_id,
+            tool="publish_post",
+            action="publish_post",
+            mode=OFFICIAL_MODE,
+            outcome=_audit_outcome(result),
+            duration_ms=int((time.monotonic() - started) * 1000),
+            target=target,
+            idempotency_key_hash=hash_identifier(str(idem_value) if idem_value is not None else None),
+        )
+        return result
 
     _register_tool(
         mcp,

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
 import sys
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -101,8 +103,17 @@ class JsonFormatter(logging.Formatter):
         }
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)
-        # Include selected structured extras.
-        for key in ("correlation_id", "tool", "mode", "action", "outcome", "duration_ms"):
+        # Include selected structured extras (audit/correlation friendly).
+        for key in (
+            "correlation_id",
+            "tool",
+            "mode",
+            "action",
+            "outcome",
+            "duration_ms",
+            "target",
+            "idempotency_key_hash",
+        ):
             if hasattr(record, key):
                 payload[key] = getattr(record, key)
         return json.dumps(payload, ensure_ascii=False, default=str)
@@ -146,3 +157,44 @@ def configure_logging(settings: Settings) -> None:
 
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
+
+
+def new_correlation_id() -> str:
+    return uuid.uuid4().hex[:16]
+
+
+def hash_identifier(value: str | None) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def audit_log(
+    logger: logging.Logger,
+    *,
+    correlation_id: str,
+    tool: str,
+    action: str,
+    mode: str,
+    outcome: str,
+    duration_ms: int | None = None,
+    target: str | None = None,
+    idempotency_key_hash: str | None = None,
+) -> None:
+    extra: dict[str, Any] = {
+        "correlation_id": correlation_id,
+        "tool": tool,
+        "action": action,
+        "mode": mode,
+        "outcome": outcome,
+    }
+    if duration_ms is not None:
+        extra["duration_ms"] = duration_ms
+    if target is not None:
+        extra["target"] = target
+    if idempotency_key_hash is not None:
+        extra["idempotency_key_hash"] = idempotency_key_hash
+    logger.info("audit", extra=extra)

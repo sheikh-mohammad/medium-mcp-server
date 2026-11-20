@@ -40,14 +40,17 @@ dev = [
   "ruff>=0.11.0",
   "mypy>=1.15.0",
 ]
+http = [
+  "uvicorn>=0.30.0",
+]
 
 [project.scripts]
 medium-mcp-server = "medium_mcp_server.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/medium-mcp-server"
-Repository = "https://github.com/your-org/medium-mcp-server"
-Documentation = "https://github.com/your-org/medium-mcp-server/tree/main/docs"
+Homepage = "https://github.com/sheikh-mohammad/medium-mcp-server"
+Repository = "https://github.com/sheikh-mohammad/medium-mcp-server"
+Documentation = "https://github.com/sheikh-mohammad/medium-mcp-server/tree/main/docs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/medium_mcp_server"]
