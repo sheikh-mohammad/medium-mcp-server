@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "medium-mcp-server"
+version = "0.1.0"
+description = "A capability-gated MCP server for preparing, exporting, reading, and (optionally) publishing Medium content."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Medium MCP Server contributors" }
+]
+keywords = ["mcp", "medium", "model-context-protocol", "ai", "publishing"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+  "mcp==2.3.0",
+  "pydantic>=2.12.0",
+  "httpx>=0.28.0",
+  "feedparser>=6.0.11",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.25.0",
+  "ruff>=0.11.0",
+  "mypy>=1.15.0",
+]
+
+[project.scripts]
+medium-mcp-server = "medium_mcp_server.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/medium-mcp-server"
+Repository = "https://github.com/your-org/medium-mcp-server"
+Documentation = "https://github.com/your-org/medium-mcp-server/tree/main/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/medium_mcp_server"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["medium_mcp_server"]
+mypy_path = "src"
+strict = false
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = false
