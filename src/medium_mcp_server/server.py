@@ -20,8 +20,15 @@ from .adapters.export import (
     render_medium_content as render_medium_content_impl,
 )
 from .adapters.feeds import read_public_feed as read_public_feed_impl
+from .adapters.medium_official import MODE as OFFICIAL_MODE
+from .adapters.medium_official import MediumOfficialApiClient
 from .capabilities import CapabilityManager, build_capability_manager
 from .config import Settings
+from .errors import (
+    ToolError,
+    confirmation_required,
+    unsupported_capability,
+)
 
 SERVER_INSTRUCTIONS = (
     "Medium MCP server. Capability-gated and draft-first. "
@@ -78,6 +85,13 @@ def _build_mcp_server(name: str, instructions: str, version: str) -> Any:
 def create_server(settings: Settings) -> tuple[Any, CapabilityManager]:
     """Create and configure the MCP server."""
     capability_manager = build_capability_manager(settings)
+    official_client = MediumOfficialApiClient(
+        base_url=settings.medium_api_base_url,
+        token=settings.medium_token,
+        timeout_seconds=settings.request_timeout_seconds,
+        on_auth_failure=capability_manager.mark_official_api_auth_failure,
+        on_auth_success=capability_manager.mark_official_api_auth_success,
+    )
     mcp = _build_mcp_server(
         name="medium-mcp-server",
         instructions=SERVER_INSTRUCTIONS,
@@ -90,8 +104,9 @@ def create_server(settings: Settings) -> tuple[Any, CapabilityManager]:
     _register_phase1_resources(mcp)
     _register_phase1_prompts(mcp)
     _register_phase2_tools(mcp, settings)
+    _register_phase3_tools(mcp, settings, capability_manager, official_client)
+    _register_phase3_resources(mcp, settings, official_client)
 
-    # Phase 3+ tools/resources will be registered here.
     return mcp, capability_manager
 
 
@@ -427,5 +442,244 @@ def _register_phase2_tools(mcp: Any, settings: Settings) -> None:
             "Fetch and parse a public Medium RSS/Atom feed (user/publication/tag/url). "
             "Best-effort, public-only, bounded, and no authentication."
         ),
+    )
+
+
+def _official_unavailable_result(
+    capability_manager: CapabilityManager, tool_name: str
+) -> dict[str, Any]:
+    capability_manager.invalidate()
+    report = capability_manager.get_report(force_refresh=True)
+    detail = report.auth.detail or "Official Medium API capability is unavailable."
+    err = unsupported_capability(
+        f"{tool_name} is unavailable: {detail}",
+        alternatives=[
+            "Use prepare_post/render_medium_content/export_post_bundle for manual publishing.",
+            "Use read_public_feed for public content discovery when relevant.",
+            "Configure a valid MEDIUM_TOKEN if legacy official API access is available to you.",
+        ],
+        tool=tool_name,
+        auth=report.auth.to_dict(),
+    )
+    return {
+        "ok": False,
+        "mode": OFFICIAL_MODE,
+        "data": None,
+        "warnings": [],
+        "next_actions": err.next_actions,
+        "error": err.to_dict(),
+    }
+
+
+def _handle_official_result(
+    capability_manager: CapabilityManager, result: dict[str, Any] | ToolError
+) -> dict[str, Any]:
+    if isinstance(result, ToolError):
+        if result.code.value in {"auth_error", "unsupported_capability"}:
+            capability_manager.invalidate()
+        return {
+            "ok": False,
+            "mode": OFFICIAL_MODE,
+            "data": None,
+            "warnings": [],
+            "next_actions": result.next_actions,
+            "error": result.to_dict(),
+        }
+    # Successful operation: mark probe/capability as valid for current runtime.
+    capability_manager.mark_official_api_auth_success("Medium API operation succeeded.")
+    return result
+
+
+def _register_phase3_tools(
+    mcp: Any, settings: Settings, capability_manager: CapabilityManager, client: MediumOfficialApiClient
+) -> None:
+    def _can_use_official_api(tool_name: str) -> dict[str, Any] | None:
+        if not settings.medium_token_configured:
+            return _official_unavailable_result(capability_manager, tool_name)
+        return None
+
+    def get_profile() -> dict[str, Any]:
+        """Fetch authenticated Medium profile via official API (capability-gated)."""
+        unavailable = _can_use_official_api("get_profile")
+        if unavailable:
+            return unavailable
+        return _handle_official_result(capability_manager, client.get_profile())
+
+    def list_publications() -> dict[str, Any]:
+        """List publications the authenticated user can contribute to (capability-gated)."""
+        unavailable = _can_use_official_api("list_publications")
+        if unavailable:
+            return unavailable
+        return _handle_official_result(capability_manager, client.list_publications())
+
+    def create_draft(
+        title: str | None = None,
+        content: str | None = None,
+        content_format: str | None = None,
+        tags: list[str] | None = None,
+        canonical_url: str | None = None,
+        license: str | None = None,  # noqa: A002
+        publication_id: str | None = None,
+        notify_followers: bool = False,
+        idempotency_key: str | None = None,
+        prepared_post: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a Medium draft (capability-gated, draft-first)."""
+        unavailable = _can_use_official_api("create_draft")
+        if unavailable:
+            return unavailable
+        return _handle_official_result(
+            capability_manager,
+            client.create_post(
+                action="create_draft",
+                publish_status="draft",
+                prepared_post=prepared_post,
+                title=title,
+                content=content,
+                content_format=content_format,
+                tags=tags,
+                canonical_url=canonical_url,
+                license=license,
+                publication_id=publication_id,
+                notify_followers=notify_followers,
+                idempotency_key=idempotency_key,
+            ),
+        )
+
+    def upload_image(
+        image_path: str | None = None,
+        image_bytes_base64: str | None = None,
+        media_type: str | None = None,
+        filename: str | None = None,
+    ) -> dict[str, Any]:
+        """Upload an image via official Medium API when supported (capability-gated)."""
+        unavailable = _can_use_official_api("upload_image")
+        if unavailable:
+            return unavailable
+        return _handle_official_result(
+            capability_manager,
+            client.upload_image(
+                image_path=image_path,
+                image_bytes_base64=image_bytes_base64,
+                media_type=media_type,
+                filename=filename,
+            ),
+        )
+
+    def publish_post(
+        confirm: bool = False,
+        publish_status: str = "public",
+        title: str | None = None,
+        content: str | None = None,
+        content_format: str | None = None,
+        tags: list[str] | None = None,
+        canonical_url: str | None = None,
+        license: str | None = None,  # noqa: A002
+        publication_id: str | None = None,
+        notify_followers: bool = False,
+        idempotency_key: str | None = None,
+        prepared_post: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create/publish a post with explicit confirmation (capability-gated, high impact)."""
+        unavailable = _can_use_official_api("publish_post")
+        if unavailable:
+            return unavailable
+        if confirm is not True:
+            err = confirmation_required(
+                "publish_post requires explicit confirmation (confirm=true) before taking effect.",
+                publish_status=publish_status,
+            )
+            return {
+                "ok": False,
+                "mode": OFFICIAL_MODE,
+                "data": None,
+                "warnings": [],
+                "next_actions": err.next_actions,
+                "error": err.to_dict(),
+            }
+        return _handle_official_result(
+            capability_manager,
+            client.create_post(
+                action="publish_post",
+                publish_status=publish_status,
+                prepared_post=prepared_post,
+                title=title,
+                content=content,
+                content_format=content_format,
+                tags=tags,
+                canonical_url=canonical_url,
+                license=license,
+                publication_id=publication_id,
+                notify_followers=notify_followers,
+                idempotency_key=idempotency_key,
+            ),
+        )
+
+    _register_tool(
+        mcp,
+        get_profile,
+        name="get_profile",
+        description="Fetch the authenticated Medium profile (official API, capability-gated).",
+    )
+    _register_tool(
+        mcp,
+        list_publications,
+        name="list_publications",
+        description="List publications the authenticated Medium user can contribute to (official API, capability-gated).",
+    )
+    _register_tool(
+        mcp,
+        create_draft,
+        name="create_draft",
+        description="Create a Medium draft via official API (capability-gated, draft-first).",
+    )
+    _register_tool(
+        mcp,
+        upload_image,
+        name="upload_image",
+        description="Upload an image via official Medium API when supported (capability-gated).",
+    )
+    _register_tool(
+        mcp,
+        publish_post,
+        name="publish_post",
+        description="Create/publish public or unlisted Medium post via official API (requires confirm=true).",
+    )
+
+
+def _register_phase3_resources(
+    mcp: Any, settings: Settings, client: MediumOfficialApiClient
+) -> None:
+    # Only expose official resources when token is configured; reads still fail closed if probe/auth fails.
+    if not settings.medium_token_configured:
+        return
+
+    def profile_resource() -> str:
+        result = client.get_profile()
+        if isinstance(result, ToolError):
+            raise ValueError(result.message)
+        return json.dumps(result, ensure_ascii=False, indent=2)
+
+    def publications_resource() -> str:
+        result = client.list_publications()
+        if isinstance(result, ToolError):
+            raise ValueError(result.message)
+        return json.dumps(result, ensure_ascii=False, indent=2)
+
+    _register_resource(
+        mcp,
+        profile_resource,
+        uri="medium://profile",
+        name="profile",
+        description="Authenticated Medium profile snapshot when official API capability is available.",
+        mime_type="application/json",
+    )
+    _register_resource(
+        mcp,
+        publications_resource,
+        uri="medium://publications",
+        name="publications",
+        description="Authenticated user's contributor publications when official API capability is available.",
+        mime_type="application/json",
     )
 

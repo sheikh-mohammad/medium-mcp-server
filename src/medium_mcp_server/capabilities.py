@@ -9,17 +9,14 @@ from . import __version__
 from .config import Settings
 from .domain.models import AuthStatus, CapabilityMode, CapabilityReport
 
-# Phase 2: export/prepare and public feed read are implemented. Official API
-# operation tools are registered in a later phase; capability reporting must remain truthful.
-IMPLEMENTED_TOOLS = [
+# Phase 3: export/prepare, public feed read, and official API tools are implemented.
+# Official API operations remain capability-gated by configured token and runtime probe/success.
+ALL_IMPLEMENTED_TOOLS = [
     "get_capabilities",
     "prepare_post",
     "render_medium_content",
     "export_post_bundle",
     "read_public_feed",
-]
-
-PLANNED_OFFICIAL_API_TOOLS = [
     "get_profile",
     "list_publications",
     "create_draft",
@@ -30,11 +27,11 @@ PLANNED_OFFICIAL_API_TOOLS = [
 BASE_LIMITATIONS = [
     "No Medium post list/read/edit/delete parity is provided; use export bundles and manual steps when needed.",
     "Public feed reads are best-effort, public-only, and may be partial, delayed, or unavailable.",
-    "Official Medium API operation tools are not implemented yet (planned for a later phase).",
 ]
 OFFICIAL_API_LIMITATIONS = [
-    "Official Medium API is legacy/limited; no post list/read/edit/delete support is assumed.",
-    "Create operations have no native idempotency guarantee; dedupe safeguards are best-effort.",
+    "Official Medium API is legacy/limited and availability may vary by account/token.",
+    "No post list/read/edit/delete support is assumed via official API.",
+    "Create/upload operations have no native idempotency guarantee; local dedupe safeguards are best-effort.",
 ]
 
 
@@ -83,7 +80,7 @@ class CapabilityManager:
         active_capabilities: list[str] = [CapabilityMode.EXPORT.value, CapabilityMode.FEED_READ.value]
         limitations = list(BASE_LIMITATIONS)
         warnings: list[str] = []
-        supported_tools = list(IMPLEMENTED_TOOLS)
+        supported_tools = list(ALL_IMPLEMENTED_TOOLS)
 
         token_configured = self.settings.medium_token_configured
         auth_detail = self._official_api_detail
@@ -96,22 +93,28 @@ class CapabilityManager:
 
         if token_configured:
             modes.append(CapabilityMode.OFFICIAL_API.value)
-            if auth_valid is False:
+            limitations.extend(OFFICIAL_API_LIMITATIONS)
+            if auth_valid is True:
+                active_capabilities.append(CapabilityMode.OFFICIAL_API.value)
+                if auth_detail:
+                    warnings.append(auth_detail)
+            elif auth_valid is False:
                 limitations.append(
                     "MEDIUM_TOKEN is configured but the official API capability is not currently available."
                 )
-                warnings.append(auth_detail or "Official API authentication/capability check failed.")
+                warnings.append(
+                    auth_detail or "Official API authentication/capability check failed."
+                )
             else:
-                # Config-gated; not treated as operation-ready until adapter/probe is implemented and succeeds.
-                limitations.extend(OFFICIAL_API_LIMITATIONS)
-                if auth_valid is None:
-                    warnings.append(
-                        "MEDIUM_TOKEN is configured; official API operation tools are not implemented yet and will require probe/adapter support in a later phase."
-                    )
-                elif auth_detail:
-                    warnings.append(auth_detail)
+                warnings.append(
+                    auth_detail
+                    or "MEDIUM_TOKEN is configured; official API capability will be verified on first use/probe."
+                )
         else:
             auth_detail = auth_detail or "No MEDIUM_TOKEN configured; official_api mode is disabled."
+            limitations.append(
+                "Official Medium API capabilities are unavailable without a configured MEDIUM_TOKEN."
+            )
 
         auth = AuthStatus(
             configured=token_configured,
