@@ -7,7 +7,7 @@ from medium_mcp_server.config import load_settings
 from medium_mcp_server.server import create_server
 
 
-def test_phase1_tools_resources_prompts_registered() -> None:
+def test_phase2_tools_resources_prompts_registered() -> None:
     settings, _ = load_settings([])
     mcp, _ = create_server(settings)
 
@@ -18,6 +18,7 @@ def test_phase1_tools_resources_prompts_registered() -> None:
         "prepare_post",
         "render_medium_content",
         "export_post_bundle",
+        "read_public_feed",
     ]
 
     resources = asyncio.run(mcp.list_resources())
@@ -53,8 +54,10 @@ def test_capabilities_tool_and_resource_payloads_phase1() -> None:
         "prepare_post",
         "render_medium_content",
         "export_post_bundle",
+        "read_public_feed",
     ]
     assert "export" in (payload.get("active_capabilities") or [])
+    assert "feed_read" in (payload.get("active_capabilities") or [])
     assert payload.get("version") == "0.1.0"
 
     contents = asyncio.run(mcp.read_resource("medium://capabilities"))

@@ -19,6 +19,7 @@ from .adapters.export import (
 from .adapters.export import (
     render_medium_content as render_medium_content_impl,
 )
+from .adapters.feeds import read_public_feed as read_public_feed_impl
 from .capabilities import CapabilityManager, build_capability_manager
 from .config import Settings
 
@@ -75,7 +76,7 @@ def _build_mcp_server(name: str, instructions: str, version: str) -> Any:
 
 
 def create_server(settings: Settings) -> tuple[Any, CapabilityManager]:
-    """Create and configure the MCP server (Phase 1 surface)."""
+    """Create and configure the MCP server."""
     capability_manager = build_capability_manager(settings)
     mcp = _build_mcp_server(
         name="medium-mcp-server",
@@ -88,8 +89,9 @@ def create_server(settings: Settings) -> tuple[Any, CapabilityManager]:
     _register_phase1_tools(mcp)
     _register_phase1_resources(mcp)
     _register_phase1_prompts(mcp)
+    _register_phase2_tools(mcp, settings)
 
-    # Phase 2+ tools/resources will be registered here.
+    # Phase 3+ tools/resources will be registered here.
     return mcp, capability_manager
 
 
@@ -398,5 +400,32 @@ def _register_phase1_prompts(mcp: Any) -> None:
         preflight_publish,
         name="preflight_publish",
         description="Safe publish review workflow; verifies capability/confirmation requirements and never auto-publishes.",
+    )
+
+
+def _register_phase2_tools(mcp: Any, settings: Settings) -> None:
+    def read_public_feed(
+        source: str,
+        source_type: str | None = None,
+        limit: int | None = None,
+        include_content: bool = False,
+    ) -> dict[str, Any]:
+        """Fetch and parse a public Medium RSS/Atom feed (best-effort, public-only, no auth)."""
+        return read_public_feed_impl(
+            source=source,
+            source_type=source_type,
+            limit=limit,
+            include_content=include_content,
+            request_timeout_seconds=settings.request_timeout_seconds,
+        )
+
+    _register_tool(
+        mcp,
+        read_public_feed,
+        name="read_public_feed",
+        description=(
+            "Fetch and parse a public Medium RSS/Atom feed (user/publication/tag/url). "
+            "Best-effort, public-only, bounded, and no authentication."
+        ),
     )
 

@@ -9,16 +9,16 @@ from . import __version__
 from .config import Settings
 from .domain.models import AuthStatus, CapabilityMode, CapabilityReport
 
-# Phase 1: export/prepare tools are implemented (always-on). Feed read and official
-# API operation tools are registered in later phases; capability reporting must remain truthful.
+# Phase 2: export/prepare and public feed read are implemented. Official API
+# operation tools are registered in a later phase; capability reporting must remain truthful.
 IMPLEMENTED_TOOLS = [
     "get_capabilities",
     "prepare_post",
     "render_medium_content",
     "export_post_bundle",
+    "read_public_feed",
 ]
 
-PLANNED_FEED_TOOLS = ["read_public_feed"]
 PLANNED_OFFICIAL_API_TOOLS = [
     "get_profile",
     "list_publications",
@@ -29,7 +29,7 @@ PLANNED_OFFICIAL_API_TOOLS = [
 
 BASE_LIMITATIONS = [
     "No Medium post list/read/edit/delete parity is provided; use export bundles and manual steps when needed.",
-    "Public feed read operations are not implemented yet (planned for a later phase).",
+    "Public feed reads are best-effort, public-only, and may be partial, delayed, or unavailable.",
     "Official Medium API operation tools are not implemented yet (planned for a later phase).",
 ]
 OFFICIAL_API_LIMITATIONS = [
@@ -80,7 +80,7 @@ class CapabilityManager:
 
     def _compute_report(self) -> CapabilityReport:
         modes: list[str] = [CapabilityMode.EXPORT.value, CapabilityMode.FEED_READ.value]
-        active_capabilities: list[str] = [CapabilityMode.EXPORT.value]
+        active_capabilities: list[str] = [CapabilityMode.EXPORT.value, CapabilityMode.FEED_READ.value]
         limitations = list(BASE_LIMITATIONS)
         warnings: list[str] = []
         supported_tools = list(IMPLEMENTED_TOOLS)
