@@ -9,11 +9,15 @@ from . import __version__
 from .config import Settings
 from .domain.models import AuthStatus, CapabilityMode, CapabilityReport
 
-# Phase 0 scaffold: only discovery is implemented. Additional tools/resources are
-# registered in later phases; capability reporting must remain truthful.
-IMPLEMENTED_TOOLS = ["get_capabilities"]
+# Phase 1: export/prepare tools are implemented (always-on). Feed read and official
+# API operation tools are registered in later phases; capability reporting must remain truthful.
+IMPLEMENTED_TOOLS = [
+    "get_capabilities",
+    "prepare_post",
+    "render_medium_content",
+    "export_post_bundle",
+]
 
-PLANNED_EXPORT_TOOLS = ["prepare_post", "render_medium_content", "export_post_bundle"]
 PLANNED_FEED_TOOLS = ["read_public_feed"]
 PLANNED_OFFICIAL_API_TOOLS = [
     "get_profile",
@@ -24,10 +28,9 @@ PLANNED_OFFICIAL_API_TOOLS = [
 ]
 
 BASE_LIMITATIONS = [
-    "Official Medium API capabilities are unavailable without a configured and valid MEDIUM_TOKEN.",
     "No Medium post list/read/edit/delete parity is provided; use export bundles and manual steps when needed.",
-    "Public feed reads are best-effort and may be partial, delayed, or unavailable.",
-    "Phase 0 scaffold: export/prepare, feed read, and official API operation tools are not implemented yet.",
+    "Public feed read operations are not implemented yet (planned for a later phase).",
+    "Official Medium API operation tools are not implemented yet (planned for a later phase).",
 ]
 OFFICIAL_API_LIMITATIONS = [
     "Official Medium API is legacy/limited; no post list/read/edit/delete support is assumed.",
@@ -77,8 +80,7 @@ class CapabilityManager:
 
     def _compute_report(self) -> CapabilityReport:
         modes: list[str] = [CapabilityMode.EXPORT.value, CapabilityMode.FEED_READ.value]
-        # Discovery is available now; operation-level export/feed capabilities land in later phases.
-        active_capabilities: list[str] = []
+        active_capabilities: list[str] = [CapabilityMode.EXPORT.value]
         limitations = list(BASE_LIMITATIONS)
         warnings: list[str] = []
         supported_tools = list(IMPLEMENTED_TOOLS)
@@ -104,7 +106,7 @@ class CapabilityManager:
                 limitations.extend(OFFICIAL_API_LIMITATIONS)
                 if auth_valid is None:
                     warnings.append(
-                        "MEDIUM_TOKEN is configured; official API operation tools are not implemented in this scaffold and will require probe/adapter support in later phases."
+                        "MEDIUM_TOKEN is configured; official API operation tools are not implemented yet and will require probe/adapter support in a later phase."
                     )
                 elif auth_detail:
                     warnings.append(auth_detail)

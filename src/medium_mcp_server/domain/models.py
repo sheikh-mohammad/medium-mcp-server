@@ -10,6 +10,18 @@ ContentFormat = Literal["markdown", "html"]
 PublishStatusIntent = Literal["draft", "public", "unlisted"]
 SourceType = Literal["user", "publication", "tag", "url"]
 
+SUPPORTED_LICENSES: tuple[str, ...] = (
+    "all-rights-reserved",
+    "cc-40-by",
+    "cc-40-by-sa",
+    "cc-40-by-nd",
+    "cc-40-by-nc",
+    "cc-40-by-nc-nd",
+    "cc-40-by-nc-sa",
+    "cc-40-zero",
+    "public-domain",
+)
+
 
 class CapabilityMode(str, Enum):
     EXPORT = "export"
