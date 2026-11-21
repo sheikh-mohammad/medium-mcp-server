@@ -1,6 +1,6 @@
 # Medium MCP Server — Compatibility Matrix (MVP)
 
-This matrix records **verified** and **unverified** MCP host/client compatibility for the current MVP (`0.1.0`, phases 0–4 complete). The server targets portable MCP behavior over **stdio** (local) and **Streamable HTTP** (remote), but real-world host support and connector UX vary by client/version.
+This matrix records **verified** and **unverified** MCP host/client compatibility for the current release (`1.0.0`, phases 0–4 complete). The server targets portable MCP behavior over **stdio** (local) and **Streamable HTTP** (remote), but real-world host support and connector UX vary by client/version.
 
 > **Status date:** 2026-11-19  
 > **Verification basis:** automated tests/contract checks and local CLI diagnostics in this repository (`pytest`, `ruff`, `mypy`, `doctor`, server surface/contract tests). Interactive per-host UI verification is mostly not automated here and is marked accordingly.

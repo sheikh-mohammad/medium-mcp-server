@@ -79,7 +79,7 @@ def test_capabilities_tool_and_resource_payloads_phase3() -> None:
     assert payload.get("supported_tools") == PHASE3_TOOLS
     assert "export" in (payload.get("active_capabilities") or [])
     assert "feed_read" in (payload.get("active_capabilities") or [])
-    assert payload.get("version") == "0.1.0"
+    assert payload.get("version") == "1.0.0"
 
     contents = asyncio.run(mcp.read_resource("medium://capabilities"))
     assert contents

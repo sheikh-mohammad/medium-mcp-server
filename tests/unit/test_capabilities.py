@@ -28,7 +28,7 @@ def test_capabilities_without_token() -> None:
     assert report.auth.configured is False
     assert report.auth.provider is None
     assert report.auth.detail is not None
-    assert report.version == "0.1.0"
+    assert report.version == "1.0.0"
     assert any("public feed reads are best-effort" in lim.lower() for lim in report.limitations)
     assert any("official medium api capabilities are unavailable" in lim.lower() for lim in report.limitations)
 

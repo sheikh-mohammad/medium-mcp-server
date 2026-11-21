@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-19
+
 ### Added
 
 - Phase 0 scaffold: Python package (`pyproject.toml`, src layout), CLI entrypoint (`serve`, `doctor`, `--help`, `--version`), config/env loading, structured redacted logging, capability manager/reporting, MCP server assembly, and stdio/Streamable HTTP runtime wiring.

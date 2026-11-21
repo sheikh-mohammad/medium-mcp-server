@@ -47,7 +47,7 @@ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://
 GitHub Packages Python requires authenticated package reads. Use a GitHub token with `read:packages`.
 
 ```bash
-pip install --index-url https://__token__:<GITHUB_TOKEN>@pypi.pkg.github.com/sheikh-mohammad/simple medium-mcp-server==0.1.0
+pip install --index-url https://__token__:<GITHUB_TOKEN>@pypi.pkg.github.com/sheikh-mohammad/simple medium-mcp-server==1.0.0
 ```
 
 PyPI remains the primary public install path; GitHub Packages Python is an additional deployment target.
