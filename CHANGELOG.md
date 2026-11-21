@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Phase 2 public read: `read_public_feed` adapter/tool for best-effort public RSS/Atom sources with normalization, bounds, warnings, and error handling.
 - Phase 3 official Medium API (capability-gated): token/config-based capability gating, profile/publications resources/tools, `create_draft`, optional `upload_image`, and confirmation-gated `publish_post` with fail-closed behavior and short-lived local dedupe safeguards.
 - Phase 4 hardening/release readiness: audit logging for mutating operations, additional security/negative and redaction tests, CI workflow, optional Dockerfile for Streamable HTTP, compatibility matrix, and expanded README/docs for install/config/safety/deployment guidance.
+- Packaging/release automation planning and scaffolding: sdist/wheel build config, release extra (`build`, `twine`), `.dockerignore`, release workflows for PyPI/TestPyPI/GitHub Packages Python (`release-python.yml`) and GHCR (`release-ghcr.yml`), and README release/install documentation.
 - Product/technical specification, research docs, MVP implementation plan, and repository community/meta files.
 
 ### Changed

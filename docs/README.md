@@ -13,6 +13,10 @@ For install, quickstart, configuration, and current tool/resource/prompt surface
 
 - [Compatibility matrix](./compatibility-matrix.md) — verified vs unverified host/client/transport status and guidance for recording manual verification evidence.
 
+## Packaging & release
+
+- [Project README: Packaging & release](../README.md#packaging--release) — local build/pip install verification, release workflow triggers, and required PyPI/TestPyPI/GitHub Packages/GHCR setup.
+
 ## Research docs
 
 - [Medium platform integration research (2026)](./research-medium-platform.md) — official Medium API status/capabilities/limitations, unofficial/community alternatives, feasibility, auth UX, and ToS/risk considerations.

@@ -22,7 +22,37 @@ This server is **capability-gated** and **draft-first**. It is designed to stay 
 
 ## Installation
 
-### From source (recommended for this repo)
+### From PyPI (once published)
+
+```bash
+pip install medium-mcp-server
+```
+
+Optional HTTP runtime extra:
+
+```bash
+pip install "medium-mcp-server[http]"
+```
+
+### From TestPyPI (validation release)
+
+```bash
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple medium-mcp-server
+```
+
+`--extra-index-url` allows dependencies to resolve from PyPI when needed.
+
+### From GitHub Packages (Python registry)
+
+GitHub Packages Python requires authenticated package reads. Use a GitHub token with `read:packages`.
+
+```bash
+pip install --index-url https://__token__:<GITHUB_TOKEN>@pypi.pkg.github.com/sheikh-mohammad/simple medium-mcp-server==0.1.0
+```
+
+PyPI remains the primary public install path; GitHub Packages Python is an additional deployment target.
+
+### From source (this repo)
 
 ```bash
 python -m venv .venv
@@ -40,10 +70,10 @@ For development and verification:
 pip install -e ".[dev]"
 ```
 
-For Streamable HTTP fallback/runtime helpers (optional):
+For release tooling:
 
 ```bash
-pip install -e ".[http]"
+pip install -e ".[release]"
 ```
 
 ## Quickstart
@@ -192,6 +222,51 @@ Use the `get_capabilities` tool or `medium://capabilities` resource to inspect e
 - **Content is untrusted input:** external feed/post content should be treated as data, not executable instructions.
 - **Streamable HTTP (MVP posture):** localhost defaults; no built-in multi-tenant auth. For remote/shared use, deploy behind TLS and reverse-proxy auth, apply origin/DNS-rebinding protections, rate limiting, and request/size limits, and restrict network exposure.
 
+## Packaging & release
+
+### Local build and pip install verification
+
+```bash
+python -m pip install --upgrade build twine
+python -m build
+python -m twine check dist/*
+```
+
+Install from built artifacts in a clean venv:
+
+```bash
+python -m venv .venv-smoke
+# Windows PowerShell: . .venv-smoke\Scripts\Activate.ps1
+# macOS/Linux: source .venv-smoke/bin/activate
+python -m pip install --upgrade pip
+python -m pip install dist/medium_mcp_server-*.whl
+medium-mcp-server --version
+python -m medium_mcp_server doctor --log-level WARNING
+```
+
+### Release automation (GitHub Actions)
+
+- `.github/workflows/release-python.yml`: builds/checks distributions and publishes
+  - TestPyPI on `v*` tag push (and also on GitHub Release published / manual dispatch)
+  - PyPI on GitHub Release published (and manual dispatch)
+  - GitHub Packages Python registry on tag push / release published / manual dispatch
+- `.github/workflows/release-ghcr.yml`: builds and pushes Docker image to `ghcr.io/sheikh-mohammad/medium-mcp-server` on `v*` tag push and GitHub Release published.
+
+### Required one-time owner setup
+
+- PyPI trusted publisher: project `medium-mcp-server`, owner `sheikh-mohammad`, repo `medium-mcp-server`, workflow `release-python.yml`, environment `pypi`.
+- TestPyPI trusted publisher: same workflow, environment `testpypi`.
+- GitHub Environments: create `pypi` and `testpypi` (recommended protection rules/reviewers).
+- GHCR uses `GITHUB_TOKEN` with `packages: write` in workflow; verify package visibility/permissions in GitHub Packages settings.
+
+### Release checklist
+
+1. Bump `pyproject.toml` `version` and `src/medium_mcp_server/__init__.py::__version__`.
+2. Update `CHANGELOG.md`.
+3. Run `ruff`, `mypy`, `pytest`, `python -m build`, and `twine check dist/*`.
+4. Create/push tag `vX.Y.Z` and/or publish a GitHub Release.
+5. Verify TestPyPI/PyPI/GitHub Packages Python/GHCR artifacts.
+
 ## Development & verification
 
 ```bash
@@ -210,15 +285,26 @@ python -m medium_mcp_server doctor --log-level WARNING
 
 CI workflow: `.github/workflows/ci.yml` (ruff, mypy, pytest across supported Python versions).
 
-## Docker (optional, Streamable HTTP)
+## Docker / GHCR (optional, Streamable HTTP)
 
-A basic `Dockerfile` is included for Streamable HTTP deployments. Example:
+A basic `Dockerfile` is included for Streamable HTTP deployments.
+
+### Local build/run
 
 ```bash
 docker build -t medium-mcp-server .
 docker run --rm -p 8000:8000 \
   -e MEDIUM_TOKEN="$MEDIUM_TOKEN" \
   medium-mcp-server
+```
+
+### GHCR image (GitHub Packages)
+
+After release publishing is configured, images are published to:
+
+```bash
+docker pull ghcr.io/sheikh-mohammad/medium-mcp-server:<version>
+docker run --rm -p 8000:8000 ghcr.io/sheikh-mohammad/medium-mcp-server:<version>
 ```
 
 In production, run behind TLS/reverse-proxy auth and appropriate network/origin/rate-limit controls.
